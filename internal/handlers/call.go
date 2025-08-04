@@ -93,7 +93,9 @@ func CallCallback(c *fiber.Ctx) error {
 		c.BodyParser(body2)
 
 		// download the call record and save it if it exists
-		file.Download(body2.CallRecord, body2.CallId + ".wav")
+		if body2.CallRecord != "" {
+			file.Download(body2.CallRecord, body2.CallId+".wav")
+		}
 
 		body.Scenario = body2.Scenario
 		body.CallId = body2.CallId
