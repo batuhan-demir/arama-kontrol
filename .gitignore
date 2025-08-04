@@ -1,0 +1,10 @@
+# .env
+.env
+
+# Ignore build artifacts
+*.exe
+
+tmp/
+files/
+
+istek.js
