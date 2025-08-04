@@ -35,7 +35,7 @@ func CreateNumber(c *fiber.Ctx) error {
 		return c.Status(400).JSON(errMsg)
 	}
 
-	if err := database.DB.Create(number).Error; err != nil {
+	if err := database.DB.Save(number).Error; err != nil {
 		return c.Status(500).JSON(&fiber.Map{
 			"success": false,
 			"message": "An error occurred while creating the number",
