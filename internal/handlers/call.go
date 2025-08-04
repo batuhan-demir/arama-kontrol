@@ -3,7 +3,9 @@ package handlers
 import (
 	"arama-kontrol/internal/dal"
 	"arama-kontrol/pkg/database"
+	"arama-kontrol/pkg/file"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -90,13 +92,18 @@ func CallCallback(c *fiber.Ctx) error {
 
 		c.BodyParser(body2)
 
+		// download the call record and save it if it exists
+		file.Download(body2.CallRecord, body2.CallId + ".wav")
+
 		body.Scenario = body2.Scenario
 		body.CallId = body2.CallId
 		body.CustomerNum = body2.CustomerNum
 		body.IncomingNumber = body2.IncomingNumber
 		body.Timestamp = body2.Timestamp
-		body.CallRecord = body2.CallRecord
+		body.CallRecord = fmt.Sprintf("%s/files/%s.wav", os.Getenv("ORIGIN"), body2.CallId)
 	}
+
+	fmt.Println("Call Callback received:", body)
 
 	//check if this call already exists
 	var existingCall dal.Call
