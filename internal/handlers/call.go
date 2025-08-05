@@ -16,6 +16,7 @@ func GetCalls(c *fiber.Ctx) error {
 	callerFilter := c.Query("caller")
 	statusFilter := c.Query("status")
 	order := c.Query("order") // "asc" or "desc" for timestamp
+	auto := c.Query("auto")   // "auto" parametresi
 
 	var calls []dal.Call
 
@@ -27,11 +28,21 @@ func GetCalls(c *fiber.Ctx) error {
 		query = query.Where("call_status = ?", statusFilter)
 	}
 
-	// Order by timestamp
-	if order == "asc" {
-		query = query.Order("started_at ASC")
+	// Auto query: cevapsız aramaları öncelikle, eskiden yeniye sıralı
+	if auto == "true" {
+		query = query.Order(`
+            CASE 
+                WHEN call_status = 'not_answered' OR call_status = '' OR call_status IS NULL THEN 0 
+                ELSE 1 
+            END, 
+            started_at ASC
+        `)
 	} else {
-		query = query.Order("started_at DESC") // default to newest first
+		if order == "desc" {
+			query = query.Order("started_at DESC") 
+		} else {
+			query = query.Order("started_at ASC") // default to oldest first
+		}
 	}
 
 	res := query.Find(&calls)
