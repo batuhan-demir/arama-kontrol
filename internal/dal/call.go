@@ -63,6 +63,7 @@ type Call struct {
 	CallStatus string         `json:"call_status" gorm:"default:'not_answered'"`
 	StartedAt  string         `json:"started_at"`
 	EndedAt    string         `json:"ended_at"`
+	Personel   string         `json:"personel" gorm:"default:''"`
 	CallRecord string         `json:"call_record" gorm:"default:''"`
 }
 

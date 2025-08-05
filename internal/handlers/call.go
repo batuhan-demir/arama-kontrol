@@ -15,7 +15,8 @@ import (
 func GetCalls(c *fiber.Ctx) error {
 	callerFilter := c.Query("caller")
 	statusFilter := c.Query("status")
-	order := c.Query("order") // "asc" or "desc" for timestamp
+	mineFilter := c.Query("mine") // "true" or "false"
+	order := c.Query("order")     // "asc" or "desc" for timestamp
 
 	var calls []dal.Call
 
@@ -32,6 +33,12 @@ func GetCalls(c *fiber.Ctx) error {
 		query = query.Order("started_at ASC")
 	} else {
 		query = query.Order("started_at DESC") // default to newest first
+	}
+
+	if mineFilter == "true" {
+		// Get the email of the authenticated user
+		userEmail := c.Locals("user").(jwt.MapClaims)["email"].(string)
+		query = query.Where("personel = ?", userEmail)
 	}
 
 	res := query.Find(&calls)
@@ -175,10 +182,15 @@ func CallCallback(c *fiber.Ctx) error {
 	}
 
 	var addedBy string
+	var personel string
+
 	if body.Scenario == "NewManualCall" {
 		addedBy = c.Locals("user").(jwt.MapClaims)["email"].(string)
+		personel = addedBy // manuel arama ekleyenin kendisi sorumlu
 	} else {
 		addedBy = "system"
+
+		personel = getNextUser()
 	}
 
 	newCall := dal.Call{
@@ -193,6 +205,7 @@ func CallCallback(c *fiber.Ctx) error {
 		StartedAt:  body.Timestamp,
 		AddedBy:    addedBy,
 		CallRecord: body.CallRecord,
+		Personel:   personel,
 	}
 
 	res := database.DB.Create(&newCall)
@@ -254,30 +267,31 @@ func UpdateCallStatus(c *fiber.Ctx) error {
 
 }
 
-// func GetFilesByReceiver(c *fiber.Ctx) error {
+func getNextUser() string {
+	var users []dal.User
+	database.DB.Where("is_active = ?", true).Order("Id ASC").Find(&users)
 
-// 	receiverMail := c.Params("receiverMail")
+	if len(users) == 0 {
+		return "system"
+	}
 
-// 	userEmail := c.Locals("user").(jwt.MapClaims)["email"]
+	var lastCall dal.Call
+	database.DB.Where("personel != ? AND personel != ?", "", "system").
+		Order("started_at DESC").
+		First(&lastCall)
 
-// 	if receiverMail != userEmail {
-// 		return c.Status(403).JSON(&fiber.Map{
-// 			"success": false,
-// 			"message": "You are not authorized to access these files",
-// 		})
-// 	}
+	if lastCall.Personel == "" {
+		return users[0].Email
+	}
 
-// 	var files []dal.File
-// 	database.DB.Find(&files, "receiver = ?", receiverMail)
+	var currentIndex int = -1
+	for i, user := range users {
+		if user.Email == lastCall.Personel {
+			currentIndex = i
+			break
+		}
+	}
 
-// 	for i, file := range files {
-// 		var uploader dal.User
-// 		database.DB.First(&uploader, "email = ?", file.Uploader)
-// 		files[i].Uploader = uploader.Name + " " + uploader.Surname
-// 	}
-
-// 	return c.JSON(&fiber.Map{
-// 		"success": true,
-// 		"data":    files,
-// 	})
-// }
+	nextIndex := (currentIndex + 1) % len(users)
+	return users[nextIndex].Email
+}
