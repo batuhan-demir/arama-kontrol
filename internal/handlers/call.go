@@ -91,6 +91,7 @@ func CallCallback(c *fiber.Ctx) error {
 		body2 := new(dal.CreateCallCDR)
 
 		c.BodyParser(body2)
+		fmt.Println("CDR Callback received:", body2)
 
 		// download the call record and save it if it exists
 		if body2.CallRecord != "" {

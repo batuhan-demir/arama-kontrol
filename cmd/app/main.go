@@ -5,10 +5,12 @@ import (
 	"arama-kontrol/internal/middlewares"
 	"arama-kontrol/internal/routes"
 	"arama-kontrol/pkg/database"
+	"net/http"
 	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	"github.com/gofiber/fiber/v2/middleware/filesystem"
 
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -43,7 +45,12 @@ func main() {
 
 	// react app in dist folder
 	app.Static("/", "./dist")
-	app.Static("/files", "./files")
+	app.Use("/files", filesystem.New(filesystem.Config{
+		Root:   http.Dir("./files"),
+		Browse: false,
+		MaxAge: 3600,
+	}))
+
 	app.Get("*", func(c *fiber.Ctx) error {
 		return c.SendFile("./dist/index.html")
 	})
