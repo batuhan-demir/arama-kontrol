@@ -95,7 +95,15 @@ func CallCallback(c *fiber.Ctx) error {
 
 		// download the call record and save it if it exists
 		if body2.CallRecord != "" {
-			file.Download(body2.CallRecord, body2.CallId+".wav")
+			err := file.Download(body2.CallRecord, body2.CallId+".wav")
+			if err != nil {
+				fmt.Printf("Failed to download call record: %v\n", err)
+				// Don't set CallRecord URL if download failed
+			} else {
+				body.CallRecord = fmt.Sprintf("%s/files/%s.wav", os.Getenv("ORIGIN"), body2.CallId)
+			}
+		} else {
+			fmt.Println("No call record URL provided")
 		}
 
 		body.Scenario = body2.Scenario
@@ -103,7 +111,6 @@ func CallCallback(c *fiber.Ctx) error {
 		body.CustomerNum = body2.CustomerNum
 		body.IncomingNumber = body2.IncomingNumber
 		body.Timestamp = body2.Timestamp
-		body.CallRecord = fmt.Sprintf("%s/files/%s.wav", os.Getenv("ORIGIN"), body2.CallId)
 	}
 
 	fmt.Println("Call Callback received:", body)
