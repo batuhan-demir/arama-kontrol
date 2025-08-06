@@ -31,10 +31,26 @@ func GetCalls(c *fiber.Ctx) error {
 	var calls []dal.Call
 	var totalCalls int64
 
+	// Get matching numbers for caller filter (by number or name)
+	var matchingNumbers []string
+	if callerFilter != "" {
+		var numbers []dal.Number
+		database.DB.Where("Number LIKE ? OR Name LIKE ?", "%"+callerFilter+"%", "%"+callerFilter+"%").Find(&numbers)
+		for _, num := range numbers {
+			matchingNumbers = append(matchingNumbers, num.Number)
+		}
+	}
+
 	// Count query for total records
 	countQuery := database.DB.Model(&dal.Call{})
 	if callerFilter != "" {
-		countQuery = countQuery.Where("caller_num LIKE ?", "%"+callerFilter+"%")
+		if len(matchingNumbers) > 0 {
+			// Search both in matching numbers AND in caller_num directly
+			countQuery = countQuery.Where("caller_num IN ? OR caller_num LIKE ?", matchingNumbers, "%"+callerFilter+"%")
+		} else {
+			// If no matching numbers found, search directly in caller_num
+			countQuery = countQuery.Where("caller_num LIKE ?", "%"+callerFilter+"%")
+		}
 	}
 	if statusFilter != "" {
 		countQuery = countQuery.Where("call_status = ?", statusFilter)
@@ -43,7 +59,13 @@ func GetCalls(c *fiber.Ctx) error {
 
 	query := database.DB.Model(&dal.Call{})
 	if callerFilter != "" {
-		query = query.Where("caller_num LIKE ?", "%"+callerFilter+"%")
+		if len(matchingNumbers) > 0 {
+			// Search both in matching numbers AND in caller_num directly
+			query = query.Where("caller_num IN ? OR caller_num LIKE ?", matchingNumbers, "%"+callerFilter+"%")
+		} else {
+			// If no matching numbers found, search directly in caller_num
+			query = query.Where("caller_num LIKE ?", "%"+callerFilter+"%")
+		}
 	}
 	if statusFilter != "" {
 		query = query.Where("call_status = ?", statusFilter)
