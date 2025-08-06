@@ -136,6 +136,12 @@ func CallCallback(c *fiber.Ctx) error {
 
 	c.BodyParser(body)
 
+	if body.CallId == "" && body.Scenario == "DTMF" { // netgsm'den gelen boş body'li DTMF callbackler için
+		return c.Status(400).JSON(&fiber.Map{
+			"success": false,
+		})
+	}
+
 	if body.CustomerNum == "" {
 		// try to parse from dal.CreateCallCDR
 		body2 := new(dal.CreateCallCDR)
