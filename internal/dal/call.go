@@ -61,6 +61,7 @@ type Call struct {
 	AddedBy    string         `gorm:"default:'system'" json:"added_by"`
 	Events     JSONBArray     `json:"events" gorm:"type:jsonb"`
 	CallStatus string         `json:"call_status" gorm:"default:'not_answered'"`
+	AnsweredBy string         `json:"answered_by" gorm:"default:''"`
 	StartedAt  string         `json:"started_at"`
 	EndedAt    string         `json:"ended_at"`
 	CallRecord string         `json:"call_record" gorm:"default:''"`

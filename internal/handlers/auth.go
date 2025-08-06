@@ -29,12 +29,23 @@ func Register(c *fiber.Ctx) error {
 		return c.Status(400).JSON(errMsg)
 	}
 
+	// Check if user already exists
+	var existingUser dal.User
+	database.DB.First(&existingUser, "Email = ?", u.Email)
+	if existingUser != (dal.User{}) {
+		return c.Status(400).JSON(&fiber.Map{
+			"success": false,
+			"message": "User already exists",
+		})
+	}
+
 	u.Password, _ = hash.HashPassword(u.Password)
 
 	newUser := dal.User{
 		Name:     u.Name,
 		Surname:  u.Surname,
 		Email:    u.Email,
+		Phone:    u.Phone,
 		Password: u.Password,
 	}
 
@@ -46,6 +57,18 @@ func Register(c *fiber.Ctx) error {
 			"message": "An error occured in server. Please try again later",
 			"error":   res.Error.Error(),
 		})
+	}
+
+	// save the number to numbers list if it doesn't exist
+	var existingNumber dal.Number
+	database.DB.First(&existingNumber, "Number = ?", newUser.Phone)
+	
+	if existingNumber == (dal.Number{}) {
+		newNumber := dal.Number{
+			Number: newUser.Phone,
+			Name:   newUser.Name + " " + newUser.Surname,
+		}
+		database.DB.Create(&newNumber)
 	}
 
 	return c.Status(201).JSON(&fiber.Map{
@@ -66,7 +89,7 @@ func Login(c *fiber.Ctx) error {
 	}
 
 	var user dal.User
-	result := database.DB.First(&user, "email = ?", loginData.Email)
+	result := database.DB.First(&user, "Email = ?", loginData.Email)
 
 	if result.Error != nil || !hash.CheckPasswordHash(loginData.Password, user.Password) {
 		return c.Status(403).JSON(&fiber.Map{
@@ -78,8 +101,11 @@ func Login(c *fiber.Ctx) error {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
-	claims["email"] = user.Email
 	claims["id"] = user.Id
+	claims["email"] = user.Email
+	claims["name"] = user.Name
+	claims["surname"] = user.Surname
+	claims["phone"] = user.Phone
 	claims["exp"] = time.Now().Add(time.Hour * 72).Unix()
 
 	t, _err := token.SignedString([]byte(os.Getenv("SECRET_KEY")))
@@ -110,7 +136,7 @@ func CheckAuth(c *fiber.Ctx) error {
 
 	var user dal.User
 
-	database.DB.First(&user, "id = ?", id)
+	database.DB.First(&user, "Id = ?", id)
 
 	if user == (dal.User{}) {
 		return c.Status(404).JSON(&fiber.Map{

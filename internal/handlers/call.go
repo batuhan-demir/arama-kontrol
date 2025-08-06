@@ -18,7 +18,28 @@ func GetCalls(c *fiber.Ctx) error {
 	order := c.Query("order") // "asc" or "desc" for timestamp
 	auto := c.Query("auto")   // "auto" parametresi
 
+	// Pagination
+	page := c.QueryInt("page", 1)    // default page 1
+	limit := c.QueryInt("limit", 50) // default 50 items per page
+
+	if page < 1 {
+		page = 1
+	}
+
+	offset := (page - 1) * limit
+
 	var calls []dal.Call
+	var totalCalls int64
+
+	// Count query for total records
+	countQuery := database.DB.Model(&dal.Call{})
+	if callerFilter != "" {
+		countQuery = countQuery.Where("caller_num LIKE ?", "%"+callerFilter+"%")
+	}
+	if statusFilter != "" {
+		countQuery = countQuery.Where("call_status = ?", statusFilter)
+	}
+	countQuery.Count(&totalCalls)
 
 	query := database.DB.Model(&dal.Call{})
 	if callerFilter != "" {
@@ -39,13 +60,14 @@ func GetCalls(c *fiber.Ctx) error {
         `)
 	} else {
 		if order == "desc" {
-			query = query.Order("started_at DESC") 
+			query = query.Order("started_at DESC")
 		} else {
 			query = query.Order("started_at ASC") // default to oldest first
 		}
 	}
 
-	res := query.Find(&calls)
+	// pagination
+	res := query.Offset(offset).Limit(limit).Find(&calls)
 
 	// Tüm numaraları tek seferde yükle (performans için)
 	var numbers []dal.Number
@@ -75,6 +97,12 @@ func GetCalls(c *fiber.Ctx) error {
 			}
 			calls[i].Redirects = call.Redirects
 		}
+
+		if call.AnsweredBy != "" {
+			if name, exists := numberMap[call.AnsweredBy]; exists {
+				calls[i].AnsweredBy = call.AnsweredBy + " - " + name
+			}
+		}
 	}
 
 	if res.Error != nil {
@@ -85,11 +113,22 @@ func GetCalls(c *fiber.Ctx) error {
 		})
 	}
 
+	totalPages := (totalCalls + int64(limit) - 1) / int64(limit)
+	hasNextPage := int64(page) < totalPages
+	hasPrevPage := page > 1
+
 	return c.JSON(&fiber.Map{
 		"success": "true",
 		"data":    calls,
+		"pagination": &fiber.Map{
+			"current_page":  page,
+			"per_page":      limit,
+			"total":         totalCalls,
+			"total_pages":   totalPages,
+			"has_next_page": hasNextPage,
+			"has_prev_page": hasPrevPage,
+		},
 	})
-
 }
 
 func CallCallback(c *fiber.Ctx) error {
@@ -160,6 +199,7 @@ func CallCallback(c *fiber.Ctx) error {
 
 		if body.Scenario == "Answer" {
 			existingCall.CallStatus = "answered"
+			existingCall.AnsweredBy = body.InternalNum
 		}
 		if body.Scenario == "Hangup" {
 			existingCall.EndedAt = body.Timestamp
@@ -241,9 +281,9 @@ func UpdateCallStatus(c *fiber.Ctx) error {
 	database.DB.First(&call, "call_id = ?", id)
 
 	call.CallStatus = newStatus
-
+	call.AnsweredBy = c.Locals("user").(jwt.MapClaims)["phone"].(string)
 	newEvent := dal.JSONB{
-		"Scenario":  fmt.Sprintf("CallStatus_%s_%s", newStatus, c.Locals("user").(jwt.MapClaims)["email"]),
+		"Scenario":  fmt.Sprintf("CallStatus_%s_%s", newStatus, c.Locals("user").(jwt.MapClaims)["email"].(string)),
 		"Timestamp": time.Now(),
 	}
 	call.Events = append(call.Events, newEvent)
