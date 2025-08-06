@@ -181,8 +181,8 @@ func CallCallback(c *fiber.Ctx) error {
 		if existingCall.Redirects == nil {
 			existingCall.Redirects = []string{}
 		}
-		if body.InternalNum != "" {
-			// if array doesnt include the number
+		if body.InternalNum != "" && body.InternalNum != body.CustomerNum {
+			// if array doesnt include the number or if it is not the same as CustomerNum
 			includes := false
 			for _, redirect := range existingCall.Redirects {
 				if redirect == body.InternalNum {
