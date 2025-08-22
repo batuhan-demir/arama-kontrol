@@ -255,6 +255,8 @@ func CallCallback(c *fiber.Ctx) error {
 
 	var addedBy string
 	if body.Scenario == "NewManualCall" {
+		body.CallId = fmt.Sprintf("manual%d", time.Now().UnixNano())
+		body.Timestamp = time.Now().Format(time.RFC3339)
 		addedBy = c.Locals("user").(jwt.MapClaims)["email"].(string)
 	} else {
 		addedBy = "system"

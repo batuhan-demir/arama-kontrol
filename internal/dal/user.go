@@ -6,7 +6,7 @@ type User struct {
 	Surname   string `gorm:"required" json:"surname"`
 	Email     string `gorm:"unique" json:"email"`
 	Phone     string `gorm:"unique" json:"phone"`
-	Password  string `gorm:"required" json:"-"`
+	Password  string `gorm:"required" json:"password"`
 	Is_Active bool   `gorm:"default:true" json:"is_active"`
 }
 
@@ -21,4 +21,13 @@ type UserCreate struct {
 type UserLogin struct {
 	Email    string `validate:"required"`
 	Password string `validate:"required"`
+}
+
+type UserResponse struct {
+	Id        int    `json:"id"`
+	Name      string `json:"name"`
+	Surname   string `json:"surname"`
+	Email     string `json:"email"`
+	Phone     string `json:"phone"`
+	Is_Active bool   `json:"is_active"`
 }

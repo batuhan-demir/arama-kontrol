@@ -16,4 +16,6 @@ func CreateAuthRoutes(router fiber.Router) {
 	router.Get("/check-auth", middlewares.VerifyAuth, handlers.CheckAuth)
 
 	router.Get("/logout", handlers.Logout)
+
+	router.Patch("/change-password", middlewares.VerifyAuth, handlers.UpdatePassword)
 }

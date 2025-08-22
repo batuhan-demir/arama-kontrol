@@ -20,6 +20,17 @@ func getSameSite() string {
 	return "Lax"
 }
 
+func toUserResponse(u dal.User) dal.UserResponse {
+	return dal.UserResponse{
+		Id:        u.Id,
+		Name:      u.Name,
+		Surname:   u.Surname,
+		Email:     u.Email,
+		Phone:     u.Phone,
+		Is_Active: u.Is_Active,
+	}
+}
+
 func Register(c *fiber.Ctx) error {
 	u := new(dal.UserCreate)
 
@@ -62,7 +73,7 @@ func Register(c *fiber.Ctx) error {
 	// save the number to numbers list if it doesn't exist
 	var existingNumber dal.Number
 	database.DB.First(&existingNumber, "Number = ?", newUser.Phone)
-	
+
 	if existingNumber == (dal.Number{}) {
 		newNumber := dal.Number{
 			Number: newUser.Phone,
@@ -74,7 +85,7 @@ func Register(c *fiber.Ctx) error {
 	return c.Status(201).JSON(&fiber.Map{
 		"success": true,
 		"message": "User Created Successfully",
-		"user":    newUser,
+		"user":    toUserResponse(newUser),
 	})
 }
 
@@ -125,7 +136,7 @@ func Login(c *fiber.Ctx) error {
 	return c.JSON(&fiber.Map{
 		"success": true,
 		"message": "Login Successful",
-		"data":    user,
+		"data":    toUserResponse(user),
 	})
 
 }
@@ -147,7 +158,7 @@ func CheckAuth(c *fiber.Ctx) error {
 
 	return c.JSON(&fiber.Map{
 		"success": true,
-		"data":    user,
+		"data":    toUserResponse(user),
 	})
 
 }
@@ -170,5 +181,46 @@ func Logout(c *fiber.Ctx) error {
 	return c.JSON(&fiber.Map{
 		"success": true,
 		"message": "Logout successful",
+	})
+}
+
+func UpdatePassword(c *fiber.Ctx) error {
+	var input struct {
+		OldPassword string `json:"currentPassword"`
+		NewPassword string `json:"newPassword"`
+	}
+
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(400).JSON(&fiber.Map{
+			"success": false,
+			"message": "Invalid request",
+		})
+	}
+
+	id := c.Locals("user").(jwt.MapClaims)["id"]
+
+	var user dal.User
+	database.DB.First(&user, "id = ?", id)
+
+	if user == (dal.User{}) {
+		return c.Status(404).JSON(&fiber.Map{
+			"success": false,
+			"message": "User not found",
+		})
+	}
+
+	if !hash.CheckPasswordHash(input.OldPassword, user.Password) {
+		return c.Status(403).JSON(&fiber.Map{
+			"success": false,
+			"message": "Invalid old password",
+		})
+	}
+
+	user.Password, _ = hash.HashPassword(input.NewPassword)
+	database.DB.Save(&user)
+
+	return c.JSON(&fiber.Map{
+		"success": true,
+		"message": "Password updated successfully",
 	})
 }
