@@ -5,7 +5,6 @@ import (
 	"arama-kontrol/pkg/database"
 	"arama-kontrol/pkg/file"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -178,7 +177,7 @@ func CallCallback(c *fiber.Ctx) error {
 				fmt.Printf("Failed to download call record: %v\n", err)
 				// Don't set CallRecord URL if download failed
 			} else {
-				body.CallRecord = fmt.Sprintf("%s/files/%s.wav", os.Getenv("ORIGIN"), body2.CallId)
+				body.CallRecord = fmt.Sprintf("/files/%s.wav", body2.CallId)
 			}
 		} else {
 			fmt.Println("No call record URL provided")
@@ -334,31 +333,3 @@ func UpdateCallStatus(c *fiber.Ctx) error {
 	})
 
 }
-
-// func GetFilesByReceiver(c *fiber.Ctx) error {
-
-// 	receiverMail := c.Params("receiverMail")
-
-// 	userEmail := c.Locals("user").(jwt.MapClaims)["email"]
-
-// 	if receiverMail != userEmail {
-// 		return c.Status(403).JSON(&fiber.Map{
-// 			"success": false,
-// 			"message": "You are not authorized to access these files",
-// 		})
-// 	}
-
-// 	var files []dal.File
-// 	database.DB.Find(&files, "receiver = ?", receiverMail)
-
-// 	for i, file := range files {
-// 		var uploader dal.User
-// 		database.DB.First(&uploader, "email = ?", file.Uploader)
-// 		files[i].Uploader = uploader.Name + " " + uploader.Surname
-// 	}
-
-// 	return c.JSON(&fiber.Map{
-// 		"success": true,
-// 		"data":    files,
-// 	})
-// }

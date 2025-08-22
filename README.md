@@ -58,7 +58,6 @@ DB_NAME=arama_kontrol
 
 # Server
 PORT=3000
-ORIGIN=http://localhost:3000
 
 # JWT
 JWT_SECRET=your_jwt_secret
